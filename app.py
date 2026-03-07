@@ -4,6 +4,36 @@ from openai import OpenAI
 import tempfile
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+def redaguj_opis(tekst, element="element budynku"):
+    if not tekst or not tekst.strip():
+        return ""
+
+    prompt = f"""
+Uredaguj poniższy opis z przeglądu budowlanego.
+
+Zasady:
+- język polski
+- styl techniczny, rzeczowy i zwięzły
+- popraw literówki, interpunkcję i szyk zdań
+- usuń zbędne powtórzenia
+- nie zmieniaj sensu wypowiedzi
+- nie dopisuj informacji, których nie ma w tekście
+- zachowaj informacje o uszkodzeniach, zużyciu, zawilgoceniu, pęknięciach, korozji itp.
+- zwróć tylko gotowy opis, bez komentarza
+
+Element: {element}
+
+Tekst:
+{tekst}
+"""
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt
+    )
+
+    return response.output_text.strip()
+
 st.set_page_config(page_title="Przegląd budynku", layout="wide")
 
 st.title("Aplikacja do przeglądu budynku")
@@ -125,28 +155,39 @@ if dostepne_elementy:
 
 st.subheader("Nagrywanie opisu")
 
+auto_redakcja = st.checkbox("Automatycznie redaguj opis", value=True)
+
 audio = st.audio_input("🎤 Nagraj opis głosowy")
 
 if audio is not None:
     st.audio(audio)
 
-    if st.button("Przepisz nagranie"):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_file.write(audio.read())
-            tmp_path = tmp_file.name
+   if st.button("Przepisz nagranie"):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+        tmp_file.write(audio.read())
+        tmp_path = tmp_file.name
 
-        with open(tmp_path, "rb") as f:
-            transcript = client.audio.transcriptions.create(
-                model="gpt-4o-mini-transcribe",
-                file=f
-            )
-
-        st.session_state[f"opis_{st.session_state.opis_key}"] = (
-         st.session_state.get(f"opis_{st.session_state.opis_key}", "") 
-        + " " 
-        + transcript.text
+    with open(tmp_path, "rb") as f:
+        transcript = client.audio.transcriptions.create(
+            model="gpt-4o-mini-transcribe",
+            file=f
         )
-        st.rerun()
+
+    tekst = transcript.text
+
+    if auto_redakcja:
+        tekst = redaguj_opis(tekst, st.session_state.opis_key)
+
+    poprzedni_opis = st.session_state.get(f"opis_{st.session_state.opis_key}", "").strip()
+
+    if poprzedni_opis:
+        nowy_opis = poprzedni_opis + " " + tekst
+    else:
+        nowy_opis = tekst
+
+    st.session_state[f"opis_{st.session_state.opis_key}"] = nowy_opis
+
+    st.rerun()
 
     opis = st.text_area(
         "Opis elementu",
