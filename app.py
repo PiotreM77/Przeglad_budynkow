@@ -4,6 +4,9 @@ from openai import OpenAI
 import tempfile
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+if "audio_input_key" not in st.session_state:
+    st.session_state.audio_input_key = 0
+
 def redaguj_opis(tekst, element="element budynku"):
     if not tekst or not tekst.strip():
         return ""
@@ -157,7 +160,10 @@ st.subheader("Nagrywanie opisu")
 
 auto_redakcja = st.checkbox("Automatycznie redaguj opis", value=True)
 
-audio = st.audio_input("🎤 Nagraj opis głosowy")
+audio = st.audio_input(
+    "🎤 Nagraj opis głosowy",
+    key=f"audio_{st.session_state.audio_input_key}"
+)
 
 if audio is not None:
     st.audio(audio)
@@ -209,6 +215,7 @@ if audio is not None:
             )
             st.session_state.opis_key += 1
             st.success("Element zapisany")
+            st.session_state.audio_input_key += 1
             st.rerun()
         else:
             st.warning("Najpierw wpisz opis elementu")
@@ -233,6 +240,7 @@ with col_a:
     if st.button("Wyczyść wszystkie elementy", use_container_width=True):
         st.session_state.elementy = []
         st.session_state.opis_key += 1
+        st.session_state.audio_input_key += 1
         st.rerun()
 
 with col_b:
