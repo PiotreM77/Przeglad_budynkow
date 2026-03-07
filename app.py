@@ -162,32 +162,34 @@ audio = st.audio_input("🎤 Nagraj opis głosowy")
 if audio is not None:
     st.audio(audio)
 
-   if st.button("Przepisz nagranie"):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-        tmp_file.write(audio.read())
-        tmp_path = tmp_file.name
+    if st.button("Przepisz nagranie"):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+            tmp_file.write(audio.read())
+            tmp_path = tmp_file.name
 
-    with open(tmp_path, "rb") as f:
-        transcript = client.audio.transcriptions.create(
-            model="gpt-4o-mini-transcribe",
-            file=f
-        )
+        with open(tmp_path, "rb") as f:
+            transcript = client.audio.transcriptions.create(
+                model="gpt-4o-mini-transcribe",
+                file=f
+            )
 
-    tekst = transcript.text
+        tekst = transcript.text
 
-    if auto_redakcja:
-        tekst = redaguj_opis(tekst, st.session_state.opis_key)
+        if auto_redakcja:
+            tekst = redaguj_opis(tekst, st.session_state.opis_key)
 
-    poprzedni_opis = st.session_state.get(f"opis_{st.session_state.opis_key}", "").strip()
+        poprzedni_opis = st.session_state.get(
+            f"opis_{st.session_state.opis_key}", ""
+        ).strip()
 
-    if poprzedni_opis:
-        nowy_opis = poprzedni_opis + " " + tekst
-    else:
-        nowy_opis = tekst
+        if poprzedni_opis:
+            nowy_opis = poprzedni_opis + " " + tekst
+        else:
+            nowy_opis = tekst
 
-    st.session_state[f"opis_{st.session_state.opis_key}"] = nowy_opis
+        st.session_state[f"opis_{st.session_state.opis_key}"] = nowy_opis
 
-    st.rerun()
+        st.rerun()
 
     opis = st.text_area(
         "Opis elementu",
